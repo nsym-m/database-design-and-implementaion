@@ -1,4 +1,4 @@
-package filemanager
+package file
 
 // BlockID 複数ブロックに分割されたDBのファイルをブロックごとに識別する構造体
 type BlockID struct {

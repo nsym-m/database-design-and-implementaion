@@ -1,28 +1,28 @@
-package filemanager_test
+package file_test
 
 import (
 	"testing"
 
-	filemanager "github.com/nsym-m/simpledb/internal/fileManager"
+	"github.com/nsym-m/simpledb/internal/file"
 )
 
 func TestFileManager(t *testing.T) {
 
 	tmpDir := t.TempDir()
-	fm, err := filemanager.NewFileManager(tmpDir, 400)
+	fm, err := file.NewFileManager(tmpDir, 400)
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := filemanager.NewBlockID("testfile", 2)
-	page1 := filemanager.NewPage(fm.BlockSize())
+	block := file.NewBlockID("testfile", 2)
+	page1 := file.NewPage(fm.BlockSize())
 	pos1 := 88
 	text := "abcdefghijklm"
 	page1.SetString(pos1, text)
-	size := filemanager.MaxLength(len(text))
+	size := file.MaxLength(len(text))
 	pos2 := pos1 + size
 	page1.SetInt(pos2, 345)
 	fm.Write(*block, page1)
-	page2 := filemanager.NewPage(fm.BlockSize())
+	page2 := file.NewPage(fm.BlockSize())
 	fm.Read(*block, page2)
 
 	// test
