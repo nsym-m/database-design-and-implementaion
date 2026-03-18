@@ -1,0 +1,144 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - copyloopvar   # ループ変数をそのままgoroutineやクロージャに渡している箇所
+    - depguard      # 使用禁止パッケージのimport
+    - dogsled       # a, _, _, _ := f() のようなブランク代入が多すぎる箇所
+    - dupl          # コードの重複
+    - errcheck      # エラーの戻り値を無視している箇所
+    - errorlint     # errors.Is/As を使わず == でエラー比較している箇所
+    - funlen        # 関数が長すぎる箇所
+    - gochecknoinits # init() 関数の使用
+    - goconst       # 同じ文字列リテラルが複数箇所に出てきて定数化すべき箇所
+    - gocritic      # 幅広いコードスタイル・品質の問題
+    - gocyclo       # 循環複雑度が高すぎる関数
+    - godox         # FIXME コメントが残っている箇所
+    - mnd           # マジックナンバーの使用
+    - gosec         # セキュリティ上の問題（ファイルパーミッション、整数オーバーフロー等）
+    - govet         # 標準の go vet 相当（nilness・shadow を追加）
+    - intrange      # for i := 0; i < n; i++ を for i := range n に書き換え可能な箇所
+    - ineffassign   # 代入したが一度も使われない変数
+    - lll           # 1行が長すぎる箇所
+    - misspell      # コメント・文字列中のスペルミス
+    - modernize     # 新しい Go のイディオムへの書き換え提案（min/max、slices 等）
+    - nakedret      # 名前付き戻り値の裸の return（可読性が下がるため）
+    - nolintlint    # //nolint コメントの不正使用（未使用・理由なし・linter名未指定）
+    - revive        # golint の後継。Goスタイルガイドに基づく指摘
+    - staticcheck   # 包括的な静的解析（バグ、非推奨API、無駄な処理等）
+    - unconvert     # 不要な型変換
+    - unparam       # 常に同じ値しか渡されていない関数パラメータ
+    - unused        # 未使用の関数・変数・型・定数
+    - whitespace    # 関数の先頭・末尾の余分な空行
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            # github.com/pkg/errors は標準の errors / fmt.Errorf で代替できるため禁止
+            - pkg: "github.com/pkg/errors"
+              desc: Use standard library errors package instead.
+
+    dupl:
+      # 100トークン以上の重複コードを警告（小さすぎると誤検知が増える）
+      threshold: 100
+
+    funlen:
+      lines: -1      # 行数では判定しない（空行やコメントで水増しを防ぐため）
+      statements: 50 # ステートメント数 50 超で警告
+
+    goconst:
+      min-len: 2        # 2文字以上の文字列が対象
+      min-occurrences: 3 # 3回以上出てきたら定数化を提案
+
+    gocritic:
+      enabled-tags:
+        - diagnostic    # バグになりうる問題
+        - experimental  # 実験的なチェック
+        - opinionated   # 意見が分かれるスタイル
+        - performance   # パフォーマンス改善
+        - style         # コードスタイル
+      disabled-checks:
+        - dupImport    # 既知の誤検知
+        - ifElseChain  # if-else チェーンへの過剰な指摘
+        - octalLiteral # 8進数リテラルへの過剰な指摘
+        - whyNoLint    # nolintlint と役割が重複
+
+    gocyclo:
+      # DBのアルゴリズムは複雑になりやすいので高めに設定
+      min-complexity: 15
+
+    godox:
+      keywords:
+        - FIXME # TODO は許容し、修正必須の FIXME だけ検出する
+
+    mnd:
+      checks:
+        - argument  # 関数引数のマジックナンバー
+        - case      # switch case のマジックナンバー
+        - condition # 条件式のマジックナンバー
+        - return    # return のマジックナンバー
+        # "operation" と "assign" は除外（x := y * 2 などは許容）
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+        - '4' # int32 のバイト数として頻出するため除外
+
+    govet:
+      enable:
+        - nilness # nil になりうる値のデリファレンス検出
+        - shadow  # 外側スコープの変数を隠す変数宣言の検出
+
+    errorlint:
+      # 型アサーション err.(*MyError) のチェックは無効（errors.As の強制はやりすぎ）
+      asserts: false
+
+    lll:
+      line-length: 140 # デフォルト(120)より少し緩め
+
+    misspell:
+      locale: US # アメリカ英語を基準（colour → color 等）
+
+    nolintlint:
+      allow-unused: false       # 実際に抑制していない nolint コメントを禁止
+      require-explanation: true # //nolint:linter // 理由 の理由部分を必須に
+      require-specific: true    # //nolint（linter名なし）を禁止
+
+    revive:
+      rules:
+        - name: indent-error-flow  # エラー処理を else 内に書かず早期 return を促す
+        - name: unexported-return
+          disabled: true           # 非公開型を返す公開関数への警告は無効（Go標準でよくある）
+        - name: unused-parameter   # 未使用パラメータの検出
+        - name: unused-receiver    # 未使用レシーバの検出
+
+  exclusions:
+    presets:
+      - comments               # コメント関連の一般的な誤検知を除外
+      - std-error-handling     # 標準的なエラーハンドリングパターンを除外
+      - common-false-positives # よくある誤検知を除外
+      - legacy                 # 古いGoコードパターンの誤検知を除外
+    rules:
+      # テストコードは重複・マジックナンバー・行長を許容
+      - path: (.+)_test\.go
+        linters:
+          - dupl
+          - mnd
+          - lll
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any' # interface{} を any に統一
+    goimports:
+      local-prefixes:
+        - github.com/nsym-m/simpledb # 自プロジェクトの import を外部ライブラリと分けてグループ化
