@@ -2,6 +2,7 @@ package file
 
 import (
 	"encoding/binary"
+	"fmt"
 	"unicode/utf8"
 )
 
@@ -10,14 +11,18 @@ type Page struct {
 	byteBuffer []byte
 }
 
-func NewPage(blockSize int) Page {
-	return Page{
+func NewPage(blockSize int) *Page {
+	return &Page{
 		byteBuffer: make([]byte, blockSize),
 	}
 }
 
-func NewPageFromBytes(bytes []byte) Page {
-	return Page{
+func NewPageFromBytes(bytes []byte) *Page {
+	fmt.Printf("Page: %+v\n", &Page{
+		byteBuffer: bytes,
+	})
+
+	return &Page{
 		byteBuffer: bytes,
 	}
 }

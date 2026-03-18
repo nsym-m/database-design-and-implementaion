@@ -49,7 +49,7 @@ func (fm *FileManager) Read(block BlockID, page Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	file, err := fm.getFile(block.FileName())
+	file, err := fm.file(block.FileName())
 	if err != nil {
 		return fmt.Errorf("Read error: %w", err)
 	}
@@ -64,7 +64,7 @@ func (fm *FileManager) Write(block BlockID, page Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	file, err := fm.getFile(block.FileName())
+	file, err := fm.file(block.FileName())
 	if err != nil {
 		return fmt.Errorf("Write error: %w", err)
 	}
@@ -79,10 +79,13 @@ func (fm *FileManager) Append(fileName string) (*BlockID, error) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	newBlockNum := len(fileName)
+	newBlockNum, err := fm.BlockCount(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("BlockCount error: %w", err)
+	}
 	blockID := NewBlockID(fileName, newBlockNum)
 	b := make([]byte, newBlockNum)
-	file, err := fm.getFile(fileName)
+	file, err := fm.file(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("Append error: %w", err)
 	}
@@ -97,7 +100,23 @@ func (fm *FileManager) BlockSize() int {
 	return fm.blockSize
 }
 
-func (fm *FileManager) getFile(fileName string) (*os.File, error) {
+func (fm *FileManager) IsNew() bool {
+	return fm.isNew
+}
+
+func (fm *FileManager) BlockCount(fileName string) (int, error) {
+	file, err := fm.file(fileName)
+	if err != nil {
+		return 0, fmt.Errorf("BlockCount error: %w", err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("BlockCount error: %w", err)
+	}
+	return int(info.Size()) / fm.blockSize, nil
+}
+
+func (fm *FileManager) file(fileName string) (*os.File, error) {
 	f, ok := fm.openFiles[fileName]
 	if ok {
 		return f, nil

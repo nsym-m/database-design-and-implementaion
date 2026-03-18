@@ -21,9 +21,9 @@ func TestFileManager(t *testing.T) {
 	size := file.MaxLength(len(text))
 	pos2 := pos1 + size
 	page1.SetInt(pos2, 345)
-	fm.Write(*block, page1)
+	fm.Write(*block, *page1)
 	page2 := file.NewPage(fm.BlockSize())
-	fm.Read(*block, page2)
+	fm.Read(*block, *page2)
 
 	// test
 	got := page2.GetInt(pos2)
