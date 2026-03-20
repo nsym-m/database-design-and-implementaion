@@ -10,27 +10,31 @@ import (
 
 func TestLogManager(t *testing.T) {
 	tmpDir := t.TempDir()
-	fm, err := file.NewFileManager(tmpDir, 400)
+	bs, err := file.NewBlockStore(tmpDir, 400)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lm, err := log.NewLogManager(fm, "test")
+	lm, err := log.NewLogManager(bs, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	createRecords(t, lm, 1, 35)
+	fmt.Printf("lm1: %+v\n", lm)
 	printeds := printLogRecords(t, lm, "The log file now has these records:")
 	if len(printeds) != 35 {
 		t.Errorf("printedsが35でない: %d\n", len(printeds))
 	}
+	fmt.Printf("lm2: %+v\n", lm)
 	createRecords(t, lm, 36, 70)
 	if err := lm.Flush(65); err != nil {
 		t.Errorf("lm.Flush(65): %v\n", err)
 	}
+	fmt.Printf("lm3: %+v\n", lm)
 	printeds2 := printLogRecords(t, lm, "The log file now has these records:")
 	if len(printeds2) != 5 {
 		t.Errorf("printeds2が5でない: %d\n", len(printeds2))
 	}
+	fmt.Printf("lm4: %+v\n", lm)
 }
 
 func printLogRecords(t *testing.T, lm *log.LogManager, msg string) []int {
@@ -51,17 +55,15 @@ func createRecords(t *testing.T, lm *log.LogManager, start, end int) {
 	t.Log("creating records")
 	for i := start; i <= end; i++ {
 		rec := createLogRecord(t, fmt.Sprintf("record%d", i), i+100)
-		lsn, err := lm.Append(rec)
-		if err != nil {
+		if _, err := lm.Append(rec); err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("lsn: %d\n", lsn)
 	}
 }
 
 func createLogRecord(t *testing.T, s string, n int) []byte {
 	npos := file.MaxLength(len(s))
-	b := make([]byte, npos+log.Bytes)
+	b := make([]byte, npos+file.Int32Bytes)
 	p := file.NewPageFromBytes(b)
 	if err := p.SetString(0, s); err != nil {
 		t.Errorf("SetString(0, s) s: %v, error: %v", s, err)

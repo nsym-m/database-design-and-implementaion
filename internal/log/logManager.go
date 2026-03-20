@@ -8,29 +8,27 @@ import (
 	"github.com/nsym-m/simpledb/internal/file"
 )
 
-const Bytes = 4
-
 type LogManager struct {
-	fileManager  *file.FileManager
+	blockStore   file.BlockStore
 	logFile      string
-	logPage      *file.Page
+	logPage      file.Page
 	currentBlock *file.BlockID
 	latestLSN    int
 	lastSavedLSN int
 	mu           sync.Mutex
 }
 
-func NewLogManager(fileManager *file.FileManager, logFile string) (*LogManager, error) {
-	b := make([]byte, fileManager.BlockSize())
+func NewLogManager(blockStore file.BlockStore, logFile string) (*LogManager, error) {
+	b := make([]byte, blockStore.BlockSize())
 	logPage := file.NewPageFromBytes(b)
-	logSize, err := fileManager.BlockCount(logFile)
+	logSize, err := blockStore.BlockCount(logFile)
 	if err != nil {
 		return nil, fmt.Errorf("NewLogManager error: %w", err)
 	}
 	lm := &LogManager{
-		fileManager: fileManager,
-		logFile:     logFile,
-		logPage:     logPage,
+		blockStore: blockStore,
+		logFile:    logFile,
+		logPage:    logPage,
 	}
 	var currentBlock *file.BlockID
 	if logSize == 0 {
@@ -40,7 +38,7 @@ func NewLogManager(fileManager *file.FileManager, logFile string) (*LogManager, 
 		}
 	} else {
 		currentBlock = file.NewBlockID(logFile, logSize-1)
-		if err := fileManager.Read(*currentBlock, *logPage); err != nil {
+		if err := blockStore.Read(*currentBlock, logPage); err != nil {
 			return nil, fmt.Errorf("NewLogManager error: %w", err)
 		}
 	}
@@ -65,8 +63,8 @@ func (lm *LogManager) Append(logrec []byte) (int, error) {
 
 	boundary := lm.logPage.GetInt(0)
 	recsize := len(logrec)
-	bytesNeeded := recsize + Bytes
-	if boundary-bytesNeeded < Bytes {
+	bytesNeeded := recsize + file.Int32Bytes
+	if boundary-bytesNeeded < file.Int32Bytes {
 		if err := lm.flush(); err != nil {
 			return 0, err
 		}
@@ -99,19 +97,19 @@ func (lm *LogManager) All() iter.Seq2[[]byte, error] {
 		lm.mu.Unlock()
 
 		for {
-			page := file.NewPage(lm.fileManager.BlockSize())
-			if err := lm.fileManager.Read(*currentBlock, *page); err != nil {
+			page := file.NewPage(lm.blockStore.BlockSize())
+			if err := lm.blockStore.Read(*currentBlock, page); err != nil {
 				yield(nil, err)
 				return
 			}
 
 			boundary := page.GetInt(0)
-			for boundary < lm.fileManager.BlockSize() {
+			for boundary < lm.blockStore.BlockSize() {
 				rec := page.GetBytes(boundary)
 				if !yield(rec, nil) {
 					return // breakされた場合
 				}
-				boundary += Bytes + len(rec)
+				boundary += file.Int32Bytes + len(rec)
 			}
 			if currentBlock.Number() == 0 {
 				return
@@ -122,21 +120,21 @@ func (lm *LogManager) All() iter.Seq2[[]byte, error] {
 }
 
 func (lm *LogManager) appendNewBlock() (*file.BlockID, error) {
-	newBlock, err := lm.fileManager.Append(lm.logFile)
+	newBlock, err := lm.blockStore.Append(lm.logFile)
 	if err != nil {
 		return nil, err
 	}
-	if err := lm.logPage.SetInt(0, lm.fileManager.BlockSize()); err != nil {
+	if err := lm.logPage.SetInt(0, lm.blockStore.BlockSize()); err != nil {
 		return nil, err
 	}
-	if err := lm.fileManager.Write(*newBlock, *lm.logPage); err != nil {
+	if err := lm.blockStore.Write(*newBlock, lm.logPage); err != nil {
 		return nil, err
 	}
 	return newBlock, nil
 }
 
 func (lm *LogManager) flush() error {
-	if err := lm.fileManager.Write(*lm.currentBlock, *lm.logPage); err != nil {
+	if err := lm.blockStore.Write(*lm.currentBlock, lm.logPage); err != nil {
 		return err
 	}
 	lm.lastSavedLSN = lm.latestLSN

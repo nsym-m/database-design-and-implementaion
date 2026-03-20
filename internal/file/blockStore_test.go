@@ -6,14 +6,14 @@ import (
 	"github.com/nsym-m/simpledb/internal/file"
 )
 
-func TestFileManager(t *testing.T) {
+func TestBlockStore(t *testing.T) {
 	tmpDir := t.TempDir()
-	fm, err := file.NewFileManager(tmpDir, 400)
+	bs, err := file.NewBlockStore(tmpDir, 400)
 	if err != nil {
 		t.Fatal(err)
 	}
 	block := file.NewBlockID("testfile", 2)
-	page1 := file.NewPage(fm.BlockSize())
+	page1 := file.NewPage(bs.BlockSize())
 	pos1 := 88
 	text := "abcdefghijklm"
 	if err := page1.SetString(pos1, text); err != nil {
@@ -25,12 +25,12 @@ func TestFileManager(t *testing.T) {
 	if err := page1.SetInt(pos2, 345); err != nil {
 		t.Errorf("SetInt(pos2, 345) pos2: %v, error: %v", pos2, err)
 	}
-	if err := fm.Write(*block, *page1); err != nil {
-		t.Errorf("Write(*block, *page1) block: %v, page1: %v, error: %v", *block, *page1, err)
+	if err := bs.Write(*block, page1); err != nil {
+		t.Errorf("Write(*block, page1) block: %v, page1: %v, error: %v", *block, page1, err)
 	}
-	page2 := file.NewPage(fm.BlockSize())
-	if err := fm.Read(*block, *page2); err != nil {
-		t.Errorf("Read(*block, *page2) block: %v, page2: %v, error: %v", *block, *page2, err)
+	page2 := file.NewPage(bs.BlockSize())
+	if err := bs.Read(*block, page2); err != nil {
+		t.Errorf("Read(*block, page2) block: %v, page2: %v, error: %v", *block, page2, err)
 	}
 
 	// test
