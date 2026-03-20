@@ -2,11 +2,14 @@ package file
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 )
+
+const dirPerm fs.FileMode = 0700
 
 // FileManager DBのデータを管理するファイルを操作する
 type FileManager struct {
@@ -21,7 +24,9 @@ func NewFileManager(dbPath string, blockSize int) (*FileManager, error) {
 	isNew := false
 	// pathがなければ作成
 	if _, err := os.Stat(dbPath); err != nil {
-		os.MkdirAll(dbPath, 0755)
+		if err := os.MkdirAll(dbPath, dirPerm); err != nil {
+			return nil, fmt.Errorf("MkdirAll error: %w", err)
+		}
 		isNew = true
 	}
 	dirs, err := os.ReadDir(dbPath)
@@ -121,7 +126,7 @@ func (fm *FileManager) file(fileName string) (*os.File, error) {
 	if ok {
 		return f, nil
 	}
-	f, err := os.OpenFile(filepath.Join(fm.dbPath, fileName), os.O_RDWR|os.O_CREATE, 0755)
+	f, err := os.OpenFile(filepath.Join(fm.dbPath, fileName), os.O_RDWR|os.O_CREATE, dirPerm)
 	if err != nil {
 		return nil, fmt.Errorf("getFile error: %w", err)
 	}

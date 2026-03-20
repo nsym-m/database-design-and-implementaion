@@ -7,7 +7,6 @@ import (
 )
 
 func TestFileManager(t *testing.T) {
-
 	tmpDir := t.TempDir()
 	fm, err := file.NewFileManager(tmpDir, 400)
 	if err != nil {
@@ -17,13 +16,22 @@ func TestFileManager(t *testing.T) {
 	page1 := file.NewPage(fm.BlockSize())
 	pos1 := 88
 	text := "abcdefghijklm"
-	page1.SetString(pos1, text)
+	if err := page1.SetString(pos1, text); err != nil {
+		t.Errorf("SetString(pos1, text) pos1: %v, text: %v, error: %v", pos1, text, err)
+	}
 	size := file.MaxLength(len(text))
 	pos2 := pos1 + size
-	page1.SetInt(pos2, 345)
-	fm.Write(*block, *page1)
+
+	if err := page1.SetInt(pos2, 345); err != nil {
+		t.Errorf("SetInt(pos2, 345) pos2: %v, error: %v", pos2, err)
+	}
+	if err := fm.Write(*block, *page1); err != nil {
+		t.Errorf("Write(*block, *page1) block: %v, page1: %v, error: %v", *block, *page1, err)
+	}
 	page2 := file.NewPage(fm.BlockSize())
-	fm.Read(*block, *page2)
+	if err := fm.Read(*block, *page2); err != nil {
+		t.Errorf("Read(*block, *page2) block: %v, page2: %v, error: %v", *block, *page2, err)
+	}
 
 	// test
 	got := page2.GetInt(pos2)

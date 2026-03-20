@@ -1,5 +1,5 @@
 package file
 
-type FileManagerInterface interface {
-	// TODO: あとで各structをinterfaceにする
-}
+// type FileManagerInterface interface {
+// 	// TODO: あとで各structをinterfaceにする
+// }

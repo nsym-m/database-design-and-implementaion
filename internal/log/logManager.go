@@ -49,10 +49,14 @@ func NewLogManager(fileManager *file.FileManager, logFile string) (*LogManager, 
 	return lm, nil
 }
 
-func (lm *LogManager) Flush(lsn int) {
-	if lsn >= lm.lastSavedLSN {
-		lm.flush()
+func (lm *LogManager) Flush(lsn int) error {
+	if lsn < lm.lastSavedLSN {
+		return nil
 	}
+	if err := lm.flush(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (lm *LogManager) Append(logrec []byte) (int, error) {
@@ -63,7 +67,9 @@ func (lm *LogManager) Append(logrec []byte) (int, error) {
 	recsize := len(logrec)
 	bytesNeeded := recsize + Bytes
 	if boundary-bytesNeeded < Bytes {
-		lm.flush()
+		if err := lm.flush(); err != nil {
+			return 0, err
+		}
 		newBlock, err := lm.appendNewBlock()
 		if err != nil {
 			return 0, err
@@ -72,8 +78,12 @@ func (lm *LogManager) Append(logrec []byte) (int, error) {
 		boundary = lm.logPage.GetInt(0)
 	}
 	recpos := boundary - bytesNeeded
-	lm.logPage.SetBytes(recpos, logrec)
-	lm.logPage.SetInt(0, recpos)
+	if err := lm.logPage.SetBytes(recpos, logrec); err != nil {
+		return 0, err
+	}
+	if err := lm.logPage.SetInt(0, recpos); err != nil {
+		return 0, err
+	}
 	lm.latestLSN += 1
 	return lm.latestLSN, nil
 }
@@ -81,7 +91,10 @@ func (lm *LogManager) Append(logrec []byte) (int, error) {
 func (lm *LogManager) All() iter.Seq2[[]byte, error] {
 	return func(yield func([]byte, error) bool) {
 		lm.mu.Lock()
-		lm.flush()
+		if err := lm.flush(); err != nil {
+			yield(nil, err)
+			return
+		}
 		currentBlock := lm.currentBlock
 		lm.mu.Unlock()
 
@@ -113,12 +126,19 @@ func (lm *LogManager) appendNewBlock() (*file.BlockID, error) {
 	if err != nil {
 		return nil, err
 	}
-	lm.logPage.SetInt(0, lm.fileManager.BlockSize())
-	lm.fileManager.Write(*newBlock, *lm.logPage)
+	if err := lm.logPage.SetInt(0, lm.fileManager.BlockSize()); err != nil {
+		return nil, err
+	}
+	if err := lm.fileManager.Write(*newBlock, *lm.logPage); err != nil {
+		return nil, err
+	}
 	return newBlock, nil
 }
 
-func (lm *LogManager) flush() {
-	lm.fileManager.Write(*lm.currentBlock, *lm.logPage)
+func (lm *LogManager) flush() error {
+	if err := lm.fileManager.Write(*lm.currentBlock, *lm.logPage); err != nil {
+		return err
+	}
 	lm.lastSavedLSN = lm.latestLSN
+	return nil
 }
