@@ -8,13 +8,13 @@ import (
 	"github.com/nsym-m/simpledb/internal/log"
 )
 
-func TestLogManager(t *testing.T) {
+func TestAppender(t *testing.T) {
 	tmpDir := t.TempDir()
 	bs, err := file.NewBlockStore(tmpDir, 400)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lm, err := log.NewLogManager(bs, "test")
+	lm, err := log.NewAppender(bs, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestLogManager(t *testing.T) {
 	fmt.Printf("lm4: %+v\n", lm)
 }
 
-func printLogRecords(t *testing.T, lm *log.LogManager, msg string) []int {
+func printLogRecords(t *testing.T, lm log.Appender, msg string) []int {
 	t.Log(msg)
 	res := []int{}
 	for rec, err := range lm.All() {
@@ -51,7 +51,7 @@ func printLogRecords(t *testing.T, lm *log.LogManager, msg string) []int {
 	return res
 }
 
-func createRecords(t *testing.T, lm *log.LogManager, start, end int) {
+func createRecords(t *testing.T, lm log.Appender, start, end int) {
 	t.Log("creating records")
 	for i := start; i <= end; i++ {
 		rec := createLogRecord(t, fmt.Sprintf("record%d", i), i+100)

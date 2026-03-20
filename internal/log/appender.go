@@ -8,7 +8,13 @@ import (
 	"github.com/nsym-m/simpledb/internal/file"
 )
 
-type LogManager struct {
+type Appender interface {
+	Flush(lsn int) error
+	Append(logrec []byte) (int, error)
+	All() iter.Seq2[[]byte, error]
+}
+
+type appender struct {
 	blockStore   file.BlockStore
 	logFile      string
 	logPage      file.Page
@@ -18,14 +24,14 @@ type LogManager struct {
 	mu           sync.Mutex
 }
 
-func NewLogManager(blockStore file.BlockStore, logFile string) (*LogManager, error) {
+func NewAppender(blockStore file.BlockStore, logFile string) (*appender, error) {
 	b := make([]byte, blockStore.BlockSize())
 	logPage := file.NewPageFromBytes(b)
 	logSize, err := blockStore.BlockCount(logFile)
 	if err != nil {
-		return nil, fmt.Errorf("NewLogManager error: %w", err)
+		return nil, fmt.Errorf("NewAppender error: %w", err)
 	}
-	lm := &LogManager{
+	lm := &appender{
 		blockStore: blockStore,
 		logFile:    logFile,
 		logPage:    logPage,
@@ -34,12 +40,12 @@ func NewLogManager(blockStore file.BlockStore, logFile string) (*LogManager, err
 	if logSize == 0 {
 		currentBlock, err = lm.appendNewBlock()
 		if err != nil {
-			return nil, fmt.Errorf("NewLogManager error: %w", err)
+			return nil, fmt.Errorf("Newappender error: %w", err)
 		}
 	} else {
 		currentBlock = file.NewBlockID(logFile, logSize-1)
 		if err := blockStore.Read(*currentBlock, logPage); err != nil {
-			return nil, fmt.Errorf("NewLogManager error: %w", err)
+			return nil, fmt.Errorf("Newappender error: %w", err)
 		}
 	}
 	lm.currentBlock = currentBlock
@@ -47,7 +53,7 @@ func NewLogManager(blockStore file.BlockStore, logFile string) (*LogManager, err
 	return lm, nil
 }
 
-func (lm *LogManager) Flush(lsn int) error {
+func (lm *appender) Flush(lsn int) error {
 	if lsn < lm.lastSavedLSN {
 		return nil
 	}
@@ -57,7 +63,7 @@ func (lm *LogManager) Flush(lsn int) error {
 	return nil
 }
 
-func (lm *LogManager) Append(logrec []byte) (int, error) {
+func (lm *appender) Append(logrec []byte) (int, error) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
@@ -86,7 +92,7 @@ func (lm *LogManager) Append(logrec []byte) (int, error) {
 	return lm.latestLSN, nil
 }
 
-func (lm *LogManager) All() iter.Seq2[[]byte, error] {
+func (lm *appender) All() iter.Seq2[[]byte, error] {
 	return func(yield func([]byte, error) bool) {
 		lm.mu.Lock()
 		if err := lm.flush(); err != nil {
@@ -119,7 +125,7 @@ func (lm *LogManager) All() iter.Seq2[[]byte, error] {
 	}
 }
 
-func (lm *LogManager) appendNewBlock() (*file.BlockID, error) {
+func (lm *appender) appendNewBlock() (*file.BlockID, error) {
 	newBlock, err := lm.blockStore.Append(lm.logFile)
 	if err != nil {
 		return nil, err
@@ -133,7 +139,7 @@ func (lm *LogManager) appendNewBlock() (*file.BlockID, error) {
 	return newBlock, nil
 }
 
-func (lm *LogManager) flush() error {
+func (lm *appender) flush() error {
 	if err := lm.blockStore.Write(*lm.currentBlock, lm.logPage); err != nil {
 		return err
 	}
