@@ -19,22 +19,25 @@ func TestAppender(t *testing.T) {
 		t.Fatal(err)
 	}
 	createRecords(t, lm, 1, 35)
-	fmt.Printf("lm1: %+v\n", lm)
+	t.Logf("lm1: %+v\n", lm)
 	printeds := printLogRecords(t, lm, "The log file now has these records:")
 	if len(printeds) != 35 {
 		t.Errorf("printedsが35でない: %d\n", len(printeds))
 	}
-	fmt.Printf("lm2: %+v\n", lm)
+	t.Logf("printeds: %+v\n", printeds)
+	t.Logf("lm2: %+v\n", lm)
 	createRecords(t, lm, 36, 70)
+	t.Logf("lm3: %+v\n", lm)
 	if err := lm.Flush(65); err != nil {
 		t.Errorf("lm.Flush(65): %v\n", err)
 	}
-	fmt.Printf("lm3: %+v\n", lm)
+	t.Logf("lm4: %+v\n", lm)
 	printeds2 := printLogRecords(t, lm, "The log file now has these records:")
-	if len(printeds2) != 5 {
-		t.Errorf("printeds2が5でない: %d\n", len(printeds2))
+	if len(printeds2) != 70 {
+		t.Errorf("printeds2が70でない: %d\n", len(printeds2))
 	}
-	fmt.Printf("lm4: %+v\n", lm)
+	t.Logf("printeds2: %+v\n", printeds2)
+	t.Logf("lm5: %+v\n", lm)
 }
 
 func printLogRecords(t *testing.T, lm log.Appender, msg string) []int {
