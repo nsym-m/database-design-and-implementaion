@@ -37,8 +37,6 @@ func Wrap(code ErrorCode, msg string, err error) *AppError {
 
 // IsCode はエラーチェーンに指定した ErrorCode を持つ AppError が含まれるか検査します。
 func IsCode(err error, code ErrorCode) bool {
-	if e, ok := errors.AsType[*AppError](err); ok {
-		return e.Code == code
-	}
-	return false
+	e, ok := errors.AsType[*AppError](err)
+	return ok && e.Code == code
 }
