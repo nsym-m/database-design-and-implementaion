@@ -57,7 +57,7 @@ func (bm *bufferMgr) Pin(block *file.BlockID) error {
 		buff = bm.tryToPin(block)
 	}
 	if buff == nil {
-		return apperrors.ErrBufferAbort
+		return apperrors.New(apperrors.BufferAbortCode, "buffer abort")
 	}
 	return nil
 }

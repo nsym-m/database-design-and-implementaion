@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"unicode/utf8"
+
+	apperrors "github.com/nsym-m/simpledb/internal/errors"
 )
 
 // Page ブロックサイズのメモリ領域
@@ -36,7 +38,7 @@ func NewPageFromBytes(bytes []byte) *page {
 
 func (p *page) SetInt(offset, i int) error {
 	if i > math.MaxInt32 || i < math.MinInt32 {
-		return fmt.Errorf("SetInt: value %d overflows int32", i)
+		return apperrors.New(apperrors.IntOverflowCode, fmt.Sprintf("SetInt: value %d overflows int32", i))
 	}
 	//nolint:gosec // int32の範囲チェックをしているので問題なし
 	binary.BigEndian.PutUint32(p.byteBuffer[offset:], uint32(int32(i)))
@@ -51,7 +53,7 @@ func (p *page) GetInt(offset int) int {
 func (p *page) SetBytes(offset int, b []byte) error {
 	length := len(b)
 	if length > math.MaxInt32 || length < math.MinInt32 {
-		return fmt.Errorf("SetBytes: len(b) %d overflows int32", length)
+		return apperrors.New(apperrors.BytesOverflowCode, fmt.Sprintf("SetBytes: len(b) %d overflows int32", length))
 	}
 	// 長さを先に書く
 	binary.BigEndian.PutUint32(p.byteBuffer[offset:], uint32(int32(length)))

@@ -1,10 +1,10 @@
 package log
 
 import (
-	"fmt"
 	"iter"
 	"sync"
 
+	apperrors "github.com/nsym-m/simpledb/internal/errors"
 	"github.com/nsym-m/simpledb/internal/file"
 )
 
@@ -29,7 +29,7 @@ func NewAppender(blockStore file.BlockStore, logFile string) (*appender, error) 
 	logPage := file.NewPageFromBytes(b)
 	logSize, err := blockStore.BlockCount(logFile)
 	if err != nil {
-		return nil, fmt.Errorf("NewAppender error: %w", err)
+		return nil, apperrors.Wrap(apperrors.AppenderInitCode, "appender initialization failed", err)
 	}
 	lm := &appender{
 		blockStore: blockStore,
@@ -40,12 +40,12 @@ func NewAppender(blockStore file.BlockStore, logFile string) (*appender, error) 
 	if logSize == 0 {
 		currentBlock, err = lm.appendNewBlock()
 		if err != nil {
-			return nil, fmt.Errorf("Newappender error: %w", err)
+			return nil, apperrors.Wrap(apperrors.AppenderInitCode, "appender initialization failed", err)
 		}
 	} else {
 		currentBlock = file.NewBlockID(logFile, logSize-1)
 		if err := blockStore.Read(*currentBlock, logPage); err != nil {
-			return nil, fmt.Errorf("Newappender error: %w", err)
+			return nil, apperrors.Wrap(apperrors.AppenderInitCode, "appender initialization failed", err)
 		}
 	}
 	lm.currentBlock = currentBlock
