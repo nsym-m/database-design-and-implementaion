@@ -1,23 +1,29 @@
 package buffer
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	apperrors "github.com/nsym-m/simpledb/internal/errors"
 	"github.com/nsym-m/simpledb/internal/file"
 	"github.com/nsym-m/simpledb/internal/log"
+	"github.com/nsym-m/simpledb/internal/syncutil"
 )
 
 const MaxTime int64 = 1000
 
 type BufferMgr interface {
+	UnPin(buff Buffer)
+	Pin(block *file.BlockID) (Buffer, error)
 }
 
 type bufferMgr struct {
 	bufferPool   []*buffer
 	numAvailable int
-	mu           sync.Mutex
+
+	cond sync.Cond
+	ctx  context.Context
 }
 
 func NewBufferMgr(blockStore file.BlockStore, appender log.Appender, numBuffs int) BufferMgr {
@@ -29,37 +35,42 @@ func NewBufferMgr(blockStore file.BlockStore, appender log.Appender, numBuffs in
 			contents:   file.NewPage(blockStore.BlockSize()),
 		}
 	}
-	return bufferMgr{
+
+	return &bufferMgr{
 		bufferPool:   pool,
 		numAvailable: numBuffs,
+		cond: sync.Cond{
+			L: &sync.Mutex{},
+		},
 	}
 }
 
 func (bm *bufferMgr) UnPin(buff Buffer) {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
+	bm.cond.L.Lock()
+	defer bm.cond.L.Unlock()
 
 	buff.UnPin()
 	if !buff.IsPinned() {
 		bm.numAvailable++
-		// bm.NotifyAll()
+		bm.cond.Broadcast()
 	}
 }
 
-func (bm *bufferMgr) Pin(block *file.BlockID) error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
+func (bm *bufferMgr) Pin(block *file.BlockID) (Buffer, error) {
+	bm.cond.L.Lock()
+	defer bm.cond.L.Unlock()
 
-	start := time.Now().UnixMilli()
+	now := time.Now()
+	start := now.UnixMilli()
 	buff := bm.tryToPin(block)
 	for buff == nil && !bm.waitingTooLong(start) {
-		// wait()
+		syncutil.WaitWithDeadline(&bm.cond, now)
 		buff = bm.tryToPin(block)
 	}
 	if buff == nil {
-		return apperrors.New(apperrors.BufferAbortCode, "buffer abort")
+		return buff, apperrors.New(apperrors.BufferAbortCode, "buffer abort")
 	}
-	return nil
+	return buff, nil
 }
 
 func (bm *bufferMgr) waitingTooLong(start int64) bool {

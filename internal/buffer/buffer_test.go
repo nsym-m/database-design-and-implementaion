@@ -20,5 +20,41 @@ func TestBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	buffer.NewBuffer(bs, ap)
+
+	bm := buffer.NewBufferMgr(bs, ap, 3)
+
+	buff1, err := bm.Pin(file.NewBlockID("testfile", 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := buff1.Contents()
+	n := p.GetInt(80)
+	t.Logf("n1 %d\n", n)
+	p.SetInt(80, n+1)
+	t.Logf("n2 %d\n", p.GetInt(80))
+	buff1.SetModified(1, 0)
+	t.Logf("new value %d\n", n+1)
+	bm.UnPin(buff1)
+	buff2, err := bm.Pin(file.NewBlockID("testfile", 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// buff3, err := bm.Pin(file.NewBlockID("testfile", 3))
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// buff4, err := bm.Pin(file.NewBlockID("testfile", 4))
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	bm.UnPin(buff2)
+	buff2, err = bm.Pin(file.NewBlockID("testfile", 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2 := buff2.Contents()
+	p2.SetInt(80, 9999)
+	buff2.SetModified(1, 0)
+	bm.UnPin(buff2)
 }

@@ -17,14 +17,6 @@ type Buffer interface {
 	UnPin()
 }
 
-func NewBuffer(blockStore file.BlockStore, appender log.Appender) Buffer {
-	return &buffer{
-		blockStore: blockStore,
-		appender:   appender,
-		contents:   file.NewPage(blockStore.BlockSize()),
-	}
-}
-
 type buffer struct {
 	blockStore file.BlockStore
 	appender   log.Appender
