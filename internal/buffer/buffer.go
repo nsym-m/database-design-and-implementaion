@@ -60,6 +60,7 @@ func (b *buffer) AssignToBlock(block *file.BlockID) {
 func (b *buffer) Flush() {
 	if b.txnum >= 0 {
 		b.appender.Flush(b.lsn)
+		// TODO: *b.block で panic
 		b.blockStore.Write(*b.block, b.contents)
 		b.txnum = -1
 	}
