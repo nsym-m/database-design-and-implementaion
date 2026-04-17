@@ -16,6 +16,8 @@ const MaxTime int64 = 1000
 type BufferMgr interface {
 	UnPin(buff Buffer)
 	Pin(block *file.BlockID) (Buffer, error)
+	Available() int
+	FlushAll(txnum int)
 }
 
 type bufferMgr struct {
@@ -71,6 +73,23 @@ func (bm *bufferMgr) Pin(block *file.BlockID) (Buffer, error) {
 		return buff, apperrors.New(apperrors.BufferAbortCode, "buffer abort")
 	}
 	return buff, nil
+}
+
+func (bm *bufferMgr) Available() int {
+	bm.cond.L.Lock()
+	defer bm.cond.L.Unlock()
+	return bm.numAvailable
+}
+
+func (bm *bufferMgr) FlushAll(txnum int) {
+	bm.cond.L.Lock()
+	defer bm.cond.L.Unlock()
+	for _, buff := range bm.bufferPool {
+		if buff.ModifyingTx() == txnum {
+			bm.numAvailable++
+			bm.cond.Broadcast()
+		}
+	}
 }
 
 func (bm *bufferMgr) waitingTooLong(start int64) bool {
