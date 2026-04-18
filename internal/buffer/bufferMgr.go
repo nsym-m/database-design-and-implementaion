@@ -35,6 +35,7 @@ func NewBufferMgr(blockStore file.BlockStore, appender log.Appender, numBuffs in
 			blockStore: blockStore,
 			appender:   appender,
 			contents:   file.NewPage(blockStore.BlockSize()),
+			txnum:      -1,
 		}
 	}
 
@@ -64,9 +65,10 @@ func (bm *bufferMgr) Pin(block *file.BlockID) (Buffer, error) {
 
 	now := time.Now()
 	start := now.UnixMilli()
+	dead := now.Add(time.Duration(MaxTime) * time.Millisecond)
 	buff := bm.tryToPin(block)
 	for buff == nil && !bm.waitingTooLong(start) {
-		syncutil.WaitWithDeadline(&bm.cond, now)
+		syncutil.WaitWithDeadline(&bm.cond, dead)
 		buff = bm.tryToPin(block)
 	}
 	if buff == nil {
@@ -100,9 +102,10 @@ func (bm *bufferMgr) tryToPin(block *file.BlockID) *buffer {
 	buff := bm.findExistingBuffer(block)
 	if buff == nil {
 		buff = bm.chooseUnPinnedBuffer()
-		if buff != nil {
-			buff.AssignToBlock(block)
+		if buff == nil {
+			return nil
 		}
+		buff.AssignToBlock(block)
 	}
 	if !buff.IsPinned() {
 		bm.numAvailable--

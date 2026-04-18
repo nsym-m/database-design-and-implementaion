@@ -43,11 +43,10 @@ func TestBufferMgr(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	buff[4], err = bm.Pin(file.NewBlockID("testfile", 4))
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Logf("available buffers: %v\n", bm.Available())
+	if bm.Available() != 3 {
+		t.Errorf("available buffers want 3, but %d", bm.Available())
+	}
 
 	t.Log("Attempting to pin block 3...")
 	buff[5], err = bm.Pin(file.NewBlockID("testfile", 3))
