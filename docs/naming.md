@@ -44,3 +44,30 @@
 | `LogMgr.append(logrec)` | `Appender.Append(logrec)` | |
 | `LogMgr.flush(lsn)` | `Appender.Flush(lsn)` | |
 | `LogMgr.iterator()` | `Appender.All()` | Javaのイテレータ → Go の `iter.Seq2` |
+
+## buffer パッケージ
+
+### 型
+
+| Java クラス | Go の型 | 種別 | 備考 |
+|---|---|---|---|
+| `BufferMgr` | `buffer.Pool` | interface | 責務（バッファプール）を名前に反映 |
+| `BufferMgr` | `buffer.pool` | struct | `Pool` の実装 |
+| `Buffer` | `buffer.Buffer` | interface | |
+| `Buffer` | `buffer.buffer` | struct | `Buffer` の実装 |
+
+### メソッド・関数
+
+| Java | Go | 備考 |
+|---|---|---|
+| `new BufferMgr(fm, lm, numBuffs)` | `buffer.NewPool(blockStore, appender, numBuffs)` | |
+| `BufferMgr.pin(block)` | `Pool.Pin(block)` | Go版は `(Buffer, error)` を返す |
+| `BufferMgr.unpin(buff)` | `Pool.UnPin(buff)` | |
+| `BufferMgr.available()` | `Pool.Available()` | |
+| `BufferMgr.flushAll(txnum)` | `Pool.FlushAll(txnum)` | |
+| `new Buffer(fm, lm)` | `buffer.NewBuffer(blockStore, appender)` | |
+| `Buffer.contents()` | `Buffer.Contents()` | |
+| `Buffer.block()` | `Buffer.Block()` | |
+| `Buffer.setModified(txnum, lsn)` | `Buffer.SetModified(txnum, lsn)` | |
+| `Buffer.isPinned()` | `Buffer.IsPinned()` | |
+| `Buffer.modifyingTx()` | `Buffer.ModifyingTx()` | |
