@@ -21,9 +21,9 @@ func TestBuffer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bm := buffer.NewBufferMgr(bs, ap, 3)
+	pool := buffer.NewPool(bs, ap, 3)
 
-	buff1, err := bm.Pin(file.NewBlockID("testfile", 1))
+	buff1, err := pool.Pin(file.NewBlockID("testfile", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,8 +34,8 @@ func TestBuffer(t *testing.T) {
 	t.Logf("n2 %d\n", p.GetInt(80))
 	buff1.SetModified(1, 0)
 	t.Logf("new value %d\n", n+1)
-	bm.UnPin(buff1)
-	buff2, err := bm.Pin(file.NewBlockID("testfile", 2))
+	pool.UnPin(buff1)
+	buff2, err := pool.Pin(file.NewBlockID("testfile", 2))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,13 +48,13 @@ func TestBuffer(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 
-	bm.UnPin(buff2)
-	buff2, err = bm.Pin(file.NewBlockID("testfile", 1))
+	pool.UnPin(buff2)
+	buff2, err = pool.Pin(file.NewBlockID("testfile", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
 	p2 := buff2.Contents()
 	p2.SetInt(80, 9999)
 	buff2.SetModified(1, 0)
-	bm.UnPin(buff2)
+	pool.UnPin(buff2)
 }

@@ -23,39 +23,39 @@ func TestBufferMgr(t *testing.T) {
 
 	buff := make([]buffer.Buffer, 6)
 
-	bm := buffer.NewBufferMgr(bs, ap, 3)
+	pool := buffer.NewPool(bs, ap, 3)
 
-	buff[0], err = bm.Pin(file.NewBlockID("testfile", 0))
+	buff[0], err = pool.Pin(file.NewBlockID("testfile", 0))
 	if err != nil {
 		t.Fatal(err)
 	}
-	buff[1], err = bm.Pin(file.NewBlockID("testfile", 1))
+	buff[1], err = pool.Pin(file.NewBlockID("testfile", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	buff[2], err = bm.Pin(file.NewBlockID("testfile", 2))
+	buff[2], err = pool.Pin(file.NewBlockID("testfile", 2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	bm.UnPin(buff[1])
+	pool.UnPin(buff[1])
 	buff[1] = nil
-	buff[3], err = bm.Pin(file.NewBlockID("testfile", 3))
+	buff[3], err = pool.Pin(file.NewBlockID("testfile", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("available buffers: %v\n", bm.Available())
-	if bm.Available() != 3 {
-		t.Errorf("available buffers want 3, but %d", bm.Available())
+	t.Logf("available buffers: %v\n", pool.Available())
+	if pool.Available() != 3 {
+		t.Errorf("available buffers want 3, but %d", pool.Available())
 	}
 
 	t.Log("Attempting to pin block 3...")
-	buff[5], err = bm.Pin(file.NewBlockID("testfile", 3))
+	buff[5], err = pool.Pin(file.NewBlockID("testfile", 3))
 	if err != nil {
 		t.Log("Exception: No available buffers")
 	}
-	bm.UnPin(buff[2])
+	pool.UnPin(buff[2])
 	buff[2] = nil
-	buff[5], err = bm.Pin(file.NewBlockID("testfile", 3))
+	buff[5], err = pool.Pin(file.NewBlockID("testfile", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
